@@ -19,16 +19,16 @@ export const SCENARIO_NAMES = [
 ];
 
 export const DEFAULTS = {
-  bloom: 0.08, bloomRadius: 0.2, bloomThresh: 0.6,
+  bloom: 0.35, bloomRadius: 0.3, bloomThresh: 0.5,
   exposure: 1.3, vignette: 0.25, grain: 0.01, chromatic: 0.0005,
-  boneThick: 0.018, jointSize: 0.035, glow: 0.3, trail: 0.35,
-  wireColor: '#00d878', jointColor: '#ff4060', aura: 0.02,
+  boneThick: 0.028, jointSize: 0.052, glow: 0.6, trail: 0.35,
+  wireColor: '#00d878', jointColor: '#ff4060', aura: 0.01,
   field: 0.45, waves: 0.4, ambient: 0.7, reflect: 0.2,
   fov: 50, orbitSpeed: 0.15, grid: true, room: true,
   scenario: 'auto', cycle: 30, dataSource: 'demo', wsUrl: '',
 };
 
-export const SETTINGS_VERSION = '6';
+export const SETTINGS_VERSION = '7';
 
 export const PRESETS = {
   foundation: {},

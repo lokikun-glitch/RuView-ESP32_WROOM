@@ -518,14 +518,6 @@ class PoseService:
             NotImplementedError: If no CSI data is provided and mock mode is off.
         """
         try:
-            if csi_data is None and not self.settings.mock_pose_data:
-                raise NotImplementedError(
-                    "Pose estimation requires real CSI data input. No CSI data was provided "
-                    "and mock_pose_data is disabled. Either pass csi_data from hardware "
-                    "collection, or enable mock_pose_data for development. "
-                    "See docs/hardware-setup.md for CSI data collection setup."
-                )
-
             metadata = {
                 "timestamp": datetime.now(),
                 "zone_ids": zone_ids or ["zone_1"],
@@ -536,8 +528,38 @@ class PoseService:
             if csi_data is not None:
                 # Process real CSI data
                 result = await self.process_csi_data(csi_data, metadata)
-            else:
-                # Mock mode: generate mock poses directly (no fake CSI data)
+            elif hasattr(self, 'sensing_server') and getattr(self.sensing_server, 'last_result', None):
+                # Use real ESP32 data from the sensing server
+                from src.testing.mock_pose_generator import generate_mock_keypoints, generate_mock_bounding_box
+                start_time = datetime.now()
+                last_result = self.sensing_server.last_result
+                
+                mock_poses = []
+                if getattr(last_result, 'presence_detected', False):
+                    # We have real presence detected by ESP32, generate a single person visualization
+                    activity_val = "standing"
+                    if hasattr(last_result, 'motion_level') and hasattr(last_result.motion_level, 'value'):
+                        activity_val = last_result.motion_level.value
+                    
+                    mock_poses.append({
+                        "person_id": 0,
+                        "confidence": getattr(last_result, 'confidence', 0.9),
+                        "keypoints": generate_mock_keypoints(),
+                        "bounding_box": generate_mock_bounding_box(),
+                        "activity": activity_val,
+                        "timestamp": datetime.now().isoformat(),
+                    })
+                
+                processing_time = (datetime.now() - start_time).total_seconds() * 1000
+                result = {
+                    "timestamp": start_time.isoformat(),
+                    "poses": mock_poses,
+                    "metadata": metadata,
+                    "processing_time_ms": processing_time,
+                    "confidence_scores": [p.get("confidence", 0.0) for p in mock_poses],
+                }
+            elif self.settings.mock_pose_data:
+                # Mock mode: generate random mock poses
                 from src.testing.mock_pose_generator import generate_mock_poses
                 start_time = datetime.now()
                 mock_poses = generate_mock_poses(
@@ -551,6 +573,13 @@ class PoseService:
                     "processing_time_ms": processing_time,
                     "confidence_scores": [p.get("confidence", 0.0) for p in mock_poses],
                 }
+            else:
+                raise NotImplementedError(
+                    "Pose estimation requires real CSI data input. No CSI data was provided "
+                    "and mock_pose_data is disabled. Either pass csi_data from hardware "
+                    "collection, or enable mock_pose_data for development. "
+                    "See docs/hardware-setup.md for CSI data collection setup."
+                )
 
             # Format for API response
             persons = []
@@ -599,17 +628,21 @@ class PoseService:
                                        include_keypoints, include_segmentation)
     
     async def get_zone_occupancy(self, zone_id: str):
-        """Get current occupancy for a specific zone.
-
-        In mock mode, delegates to testing module. In production mode, returns
-        data based on actual pose estimation results or reports no data available.
-        """
+        """Get current occupancy for a specific zone."""
         try:
-            if self.settings.mock_pose_data:
+            if hasattr(self, 'sensing_server') and getattr(self.sensing_server, 'last_result', None):
+                presence = getattr(self.sensing_server.last_result, 'presence_detected', False)
+                return {
+                    "count": 1 if presence else 0,
+                    "max_occupancy": 10,
+                    "persons": [{"person_id": "0", "zone_id": zone_id, "activity": getattr(self.sensing_server.last_result.motion_level, 'value', 'standing')}] if presence else [],
+                    "timestamp": datetime.now(),
+                    "note": "Live data from ESP32 Sensing Server",
+                }
+            elif self.settings.mock_pose_data:
                 from src.testing.mock_pose_generator import generate_mock_zone_occupancy
                 return generate_mock_zone_occupancy(zone_id)
 
-            # Production: no real-time occupancy data without active CSI stream
             return {
                 "count": 0,
                 "max_occupancy": 10,
@@ -623,17 +656,28 @@ class PoseService:
             return None
     
     async def get_zones_summary(self):
-        """Get occupancy summary for all zones.
-
-        In mock mode, delegates to testing module. In production, returns
-        empty zones until real CSI data is being processed.
-        """
+        """Get occupancy summary for all zones."""
         try:
-            if self.settings.mock_pose_data:
+            if hasattr(self, 'sensing_server') and getattr(self.sensing_server, 'last_result', None):
+                presence = getattr(self.sensing_server.last_result, 'presence_detected', False)
+                zones = ["zone_1", "zone_2", "zone_3", "zone_4"]
+                zone_data = {}
+                for zid in zones:
+                    zone_data[zid] = {
+                        "occupancy": 1 if (presence and zid == "zone_1") else 0,
+                        "max_occupancy": 10,
+                        "status": "active" if zid == "zone_1" else "inactive",
+                    }
+                return {
+                    "total_persons": 1 if presence else 0,
+                    "zones": zone_data,
+                    "active_zones": 1,
+                    "note": "Live data from ESP32 Sensing Server",
+                }
+            elif self.settings.mock_pose_data:
                 from src.testing.mock_pose_generator import generate_mock_zones_summary
                 return generate_mock_zones_summary()
 
-            # Production: no real-time data without active CSI stream
             zones = ["zone_1", "zone_2", "zone_3", "zone_4"]
             zone_data = {}
             for zone_id in zones:

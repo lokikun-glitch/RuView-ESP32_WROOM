@@ -23,6 +23,7 @@ from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.dependencies import get_pose_service, get_stream_service, get_hardware_service
 from src.api.websocket.connection_manager import connection_manager
 from src.api.websocket.pose_stream import PoseStreamHandler
+from src.sensing.ws_server import SensingWebSocketServer
 
 # Configure logging
 settings = get_settings()
@@ -83,6 +84,8 @@ async def initialize_services(app: FastAPI):
         app.state.pose_service = pose_service
         app.state.stream_service = stream_service
         app.state.pose_stream_handler = pose_stream_handler
+        app.state.sensing_server = SensingWebSocketServer()
+        pose_service.sensing_server = app.state.sensing_server
         
         logger.info("Services initialized successfully")
         
@@ -98,11 +101,18 @@ async def start_background_tasks(app: FastAPI):
         pose_service = app.state.pose_service
         await pose_service.start()
         logger.info("Pose service started")
+        # Start stream service
+        stream_service = app.state.stream_service
+        await stream_service.start()
+        logger.info("Stream service started")
         
         # Start pose streaming if enabled
         if settings.enable_real_time_processing:
             pose_stream_handler = app.state.pose_stream_handler
             await pose_stream_handler.start_streaming()
+        
+        # Start the integrated ESP32 sensing server (handles port 8765 and UDP 5005)
+        asyncio.create_task(app.state.sensing_server.run())
         
         logger.info("Background tasks started")
         
@@ -116,20 +126,23 @@ async def cleanup_services(app: FastAPI):
     try:
         # Stop pose streaming
         if hasattr(app.state, 'pose_stream_handler'):
-            await app.state.pose_stream_handler.shutdown()
+            await app.state.pose_stream_handler.stop_streaming()
         
         # Shutdown connection manager
         await connection_manager.shutdown()
         
         # Cleanup services
         if hasattr(app.state, 'stream_service'):
-            await app.state.stream_service.shutdown()
+            await app.state.stream_service.stop()
         
         if hasattr(app.state, 'pose_service'):
             await app.state.pose_service.stop()
         
         if hasattr(app.state, 'hardware_service'):
-            await app.state.hardware_service.shutdown()
+            await app.state.hardware_service.stop()
+            
+        if hasattr(app.state, 'sensing_server'):
+            app.state.sensing_server.stop()
         
         logger.info("Services cleaned up successfully")
         
@@ -332,9 +345,15 @@ async def api_status(request: Request):
         pose_service = getattr(request.app.state, 'pose_service', None)
         stream_service = getattr(request.app.state, 'stream_service', None)
         pose_stream_handler = getattr(request.app.state, 'pose_stream_handler', None)
+        sensing_server = getattr(request.app.state, 'sensing_server', None)
+        
+        # Determine the data source label for the UI
+        # UI expects: "esp32" => live, anything else => server-simulated
+        sensing_source = getattr(sensing_server, 'source', 'simulated') if sensing_server else 'simulated'
         
         # Get service statuses
         status = {
+            "source": sensing_source,  # Used by sensing.service.js to set data source label
             "api": {
                 "status": "healthy",
                 "uptime": "unknown",
@@ -354,6 +373,7 @@ async def api_status(request: Request):
     except Exception as e:
         logger.error(f"Error getting API status: {e}")
         return {
+            "source": "simulated",
             "api": {
                 "status": "error",
                 "error": str(e)
@@ -422,6 +442,26 @@ if settings.is_development and settings.enable_test_endpoints:
             logger.error(f"Error resetting services: {e}")
             return {"error": str(e)}
 
+# --- Dummy endpoints for v2 UI compatibility ---
+@app.get(f"{settings.api_prefix}/models")
+async def list_models():
+    """Mock models endpoint for UI compatibility."""
+    return []
+
+@app.get(f"{settings.api_prefix}/models/active")
+async def get_active_model():
+    """Mock active model endpoint for UI compatibility."""
+    return None
+
+@app.get(f"{settings.api_prefix}/training/status")
+async def get_training_status():
+    """Mock training status endpoint for UI compatibility."""
+    return {"status": "idle"}
+
+@app.get(f"{settings.api_prefix}/recording")
+async def list_recordings():
+    """Mock recording endpoint for UI compatibility."""
+    return []
 
 if __name__ == "__main__":
     import uvicorn

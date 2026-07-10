@@ -1,0 +1,90 @@
+# ESP32 (ESP-WROOM-32 / ESP32-D0WD) CSI Node — Default SDK Configuration
+# Port of the RuView ESP32-S3 firmware to the original ESP32.
+#
+# Build:
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults.esp32" set-target esp32 && idf.py build
+#
+# Flash:
+#   idf.py -p <PORT> flash monitor
+#
+# Differences from sdkconfig.defaults (S3):
+#   - Target: esp32 (240 MHz dual-core Xtensa LX6, 520 KB SRAM, no PSRAM on WROOM-32)
+#   - Flash: 4 MB (ESP-WROOM-32 spec); OTA partition table sized accordingly
+#   - Display: disabled (no QSPI AMOLED hardware on reference WROOM-32 board)
+#   - WASM:    disabled (requires PSRAM; absent on WROOM-32 — re-enable on WROVER)
+#   - LED:     disabled by default (no onboard WS2812 on reference board; set
+#              CONFIG_LED_GAMMA_VIZ=y + CONFIG_LED_STRIP_GPIO=<pin> if you have one)
+#   - Power management: 240/80 MHz range (matches ESP32 hardware limits)
+#   - Removed CONFIG_ESP_WIFI_EXTRA_IRAM_OPT — symbol does not exist on ESP32 IDF target
+
+# ── Target ──────────────────────────────────────────────────────────────────
+CONFIG_IDF_TARGET="esp32"
+
+# ── Flash & partition table ──────────────────────────────────────────────────
+# ESP-WROOM-32 ships with 4 MB flash (QIO, 80 MHz).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_esp32.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# ── Compiler ─────────────────────────────────────────────────────────────────
+# Optimize for size — keeps the binary inside the 1.875 MB OTA slot.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+# ── WiFi / CSI ───────────────────────────────────────────────────────────────
+# CSI capture is the core purpose of this firmware; must be enabled.
+CONFIG_ESP_WIFI_CSI_ENABLED=y
+
+# Disable modem sleep by default (controlled at runtime by power_mgmt.c).
+# power_mgmt_init() re-enables when duty_cycle < 100.
+# NOTE: CONFIG_ESP_WIFI_EXTRA_IRAM_OPT is an S3/C6-only symbol — not set here.
+
+# ── Power management ─────────────────────────────────────────────────────────
+# ESP32 clock range: 80 MHz minimum, 240 MHz maximum.
+# Automatic light sleep is gated by CONFIG_PM_ENABLE (set in menuconfig if
+# needed) and by power_mgmt_init() at runtime.
+CONFIG_PM_ENABLE=y
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# ── lwIP / UDP tuning ────────────────────────────────────────────────────────
+# Same tuning that fixed ENOMEM drops on S3/C6 (see sdkconfig.defaults comment
+# block for the full measurement rationale, issue cluster #946/#949/#864).
+CONFIG_LWIP_SO_RCVBUF=y
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=32
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=64
+
+# ── FreeRTOS stack sizes ──────────────────────────────────────────────────────
+# Main task needs headroom for CSI + edge processing init.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# Timer task runs adaptive_controller emit + stream_sender network I/O.
+# Without this the device bootloops with "stack overflow in task Tmr Svc".
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=8192
+
+# ── Feature flags (ESP32 WROOM-32 defaults) ───────────────────────────────────
+
+# Display: disabled — no QSPI AMOLED on reference WROOM-32 board.
+# To enable: attach an SPI-based display, update display_hal.c pin defs,
+# and re-enable CONFIG_DISPLAY_ENABLE=y (also requires CONFIG_SPIRAM for buffers).
+# CONFIG_DISPLAY_ENABLE is not set
+
+# WASM: disabled — requires PSRAM (absent on WROOM-32, present on WROVER-32).
+# To enable: use an ESP32-WROVER module, add CONFIG_SPIRAM=y, then set WASM_ENABLE=y.
+# CONFIG_WASM_ENABLE is not set
+
+# LED Gamma Visualization (ADR-183): disabled by default.
+# The reference ESP-WROOM-32 has no onboard WS2812.
+# To enable: connect a WS2812 to a spare GPIO (e.g., GPIO 2 or GPIO 4),
+# then set CONFIG_LED_GAMMA_VIZ=y and CONFIG_LED_STRIP_GPIO=<pin> in menuconfig
+# or append to a local sdkconfig fragment.
+# CONFIG_LED_GAMMA_VIZ is not set
+
+# ── NVS ──────────────────────────────────────────────────────────────────────
+# NVS encryption disabled by default (requires eFuse provisioning).
+# Enable only after burning HMAC key to eFuse block.
+# CONFIG_NVS_ENCRYPTION is not set

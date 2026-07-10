@@ -140,7 +140,7 @@ class Settings(BaseSettings):
     
     # Feature flags
     enable_authentication: bool = Field(default=True, description="Enable authentication")
-    enable_rate_limiting: bool = Field(default=True, description="Enable rate limiting")
+    enable_rate_limiting: bool = Field(default=False, description="Enable rate limiting")
     enable_websockets: bool = Field(default=True, description="Enable WebSocket support")
     enable_historical_data: bool = Field(default=True, description="Enable historical data storage")
     enable_real_time_processing: bool = Field(default=True, description="Enable real-time processing")

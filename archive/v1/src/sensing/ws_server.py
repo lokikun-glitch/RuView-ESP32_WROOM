@@ -9,7 +9,7 @@ tick and broadcasts JSON frames to all connected WebSocket clients on
 Usage
 -----
     pip install websockets
-    python -m v1.src.sensing.ws_server          # or  python v1/src/sensing/ws_server.py
+    python -m src.sensing.ws_server          # or  python v1/src/sensing/ws_server.py
 
 Data sources (tried in order):
     1. ESP32 CSI over UDP port 5005 (ADR-018 binary frames)
@@ -36,12 +36,12 @@ from typing import Dict, List, Optional, Set
 import numpy as np
 
 # Sensing pipeline imports
-from v1.src.sensing.rssi_collector import (
+from src.sensing.rssi_collector import (
     WifiSample,
     RingBuffer,
 )
-from v1.src.sensing.feature_extractor import RssiFeatureExtractor, RssiFeatures
-from v1.src.sensing.classifier import MotionLevel, PresenceClassifier, SensingResult
+from src.sensing.feature_extractor import RssiFeatureExtractor, RssiFeatures
+from src.sensing.classifier import MotionLevel, PresenceClassifier, SensingResult
 
 logger = logging.getLogger(__name__)
 
@@ -313,6 +313,7 @@ class SensingWebSocketServer:
         self.extractor = RssiFeatureExtractor(window_seconds=10.0)
         self.classifier = PresenceClassifier()
         self.source: str = "unknown"
+        self.last_result = None
         self._running = False
 
     def _create_collector(self):
@@ -435,6 +436,7 @@ class SensingWebSocketServer:
                 if len(samples) >= 4:
                     features = self.extractor.extract(samples)
                     result = self.classifier.classify(features)
+                    self.last_result = result
                     message = self._build_message(features, result)
                     await self._broadcast(message)
 

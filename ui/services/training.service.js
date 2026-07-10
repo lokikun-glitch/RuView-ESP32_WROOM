@@ -72,9 +72,9 @@ export class TrainingService {
     try {
       const data = await apiService.get('/api/v1/train/status');
       return data;
-    } catch (error) {
-      this.logger.error('Failed to get training status', { error: error.message });
-      throw error;
+    } catch {
+      // Training endpoints not available — return null silently
+      return null;
     }
   }
 
@@ -108,9 +108,9 @@ export class TrainingService {
     try {
       const data = await apiService.get('/api/v1/recording/list');
       return data?.recordings ?? [];
-    } catch (error) {
-      this.logger.error('Failed to list recordings', { error: error.message });
-      throw error;
+    } catch {
+      // Recording endpoints not available — return empty list silently
+      return [];
     }
   }
 

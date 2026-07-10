@@ -3,7 +3,7 @@
 import { TabManager } from './components/TabManager.js';
 import { DashboardTab } from './components/DashboardTab.js';
 import { HardwareTab } from './components/HardwareTab.js';
-import { LiveDemoTab } from './components/LiveDemoTab.js';
+
 import { SensingTab } from './components/SensingTab.js';
 import { apiService } from './services/api.service.js';
 import { wsService } from './services/websocket.service.js';
@@ -143,12 +143,7 @@ class WiFiDensePoseApp {
       this.components.hardware.init();
     }
 
-    // Live demo tab
-    const demoContainer = document.getElementById('demo');
-    if (demoContainer) {
-      this.components.demo = new LiveDemoTab(demoContainer);
-      this.components.demo.init();
-    }
+
 
     // Sensing tab
     const sensingContainer = document.getElementById('sensing');

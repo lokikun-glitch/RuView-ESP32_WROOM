@@ -1,13 +1,30 @@
 ## ESP-IDF Managed Component Dependencies (ADR-045)
+##
+## led_strip: target-agnostic WS2812 driver via RMT.  Required on all
+##   targets when CONFIG_LED_GAMMA_VIZ=y (ADR-183) and for the boot-time
+##   LED clear even when viz is disabled.  Version ≥3.0.0 supports the
+##   led_strip_rmt_config_t.flags.with_dma field (set to false on
+##   ESP32 / C6 — RMT DMA is an S3-only hardware feature).
+##
+## Display components (lvgl, esp_lcd_touch_cst816s, esp_lcd_touch):
+##   Only required when CONFIG_DISPLAY_ENABLE=y (default n on ESP32).
+##   These are excluded from the ESP32 build because:
+##     - display_hal.c and display_task.c are wrapped in #if CONFIG_DISPLAY_ENABLE
+##     - CMakeLists.txt only appends esp_lcd / lvgl to REQUIRES when the
+##       option is set, so the headers are never searched at compile time.
+##   Leaving them out avoids the IDF component manager fetching ~2 MB of
+##   display driver sources when building the ESP32 firmware.
+##   To restore display support (S3/WROVER boards with AMOLED):
+##     idf.py menuconfig → AMOLED Display (ADR-045) → Enable AMOLED display support
+##   then re-add the three commented-out entries below and re-run idf.py build.
+##
+##   ## LVGL graphics library
+##   lvgl/lvgl: "~8.3"
+##   ## CST816S capacitive touch driver
+##   espressif/esp_lcd_touch_cst816s: "^1.0"
+##   ## LCD touch abstraction
+##   espressif/esp_lcd_touch: "^1.0"
+
 dependencies:
-  ## LVGL graphics library
-  lvgl/lvgl: "~8.3"
-
-  ## CST816S capacitive touch driver
-  espressif/esp_lcd_touch_cst816s: "^1.0"
-
-  ## LCD touch abstraction
-  espressif/esp_lcd_touch: "^1.0"
-
-  ## Onboard WS2812 LED Disabling
+  ## Onboard WS2812 LED driver — target-agnostic, always required.
   espressif/led_strip: "^3.0.0"

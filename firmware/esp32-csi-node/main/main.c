@@ -226,11 +226,13 @@ void app_main(void)
      * common module). On C6, GPIO 38/48 don't exist (only 0-30) — gate by target.
      * Behaviour is set by CONFIG_LED_GAMMA_VIZ (ADR-183): on = 40 Hz gamma flicker
      * coloured by CSI motion; off = clear the LED at boot. */
-#if defined(CONFIG_IDF_TARGET_ESP32C6)
-    const int led_gpio = 8;
-#else
-    const int led_gpio = 48;
-#endif
+    /* Onboard WS2812 GPIO — configured in menuconfig under "Onboard LED (ADR-183)".
+     * Defaults: S3 DevKitC-1 v1.1/N16R8 = 48, S3 DevKitC-1 v1.0 = 38,
+     *           C6 DevKitC-1 = 8, ESP32-WROOM-32 (external) = 2.
+     * Change CONFIG_LED_STRIP_GPIO in menuconfig to match your board's wiring.
+     * When CONFIG_LED_GAMMA_VIZ is unset the LED is cleared at boot and the
+     * RMT channel released — zero runtime overhead. */
+    const int led_gpio = CONFIG_LED_STRIP_GPIO;
     led_strip_config_t strip_config = {
         .strip_gpio_num = led_gpio,
         .max_leds = 1,

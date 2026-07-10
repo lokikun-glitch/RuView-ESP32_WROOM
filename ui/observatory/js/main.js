@@ -436,40 +436,26 @@ class Observatory {
   // ---- WebSocket live data ----
 
   _autoDetectLive() {
-    // Probe sensing server health on same origin, then common ports
-    const host = window.location.hostname || 'localhost';
-    const candidates = [
-      window.location.origin,                   // same origin (e.g. :3000)
-      `http://${host}:8765`,                     // default WS port
-      `http://${host}:3000`,                     // default HTTP port
-    ];
-    // Deduplicate
-    const unique = [...new Set(candidates)];
+    const hostname = window.location.hostname || 'localhost';
+    const host = hostname === 'localhost' ? '127.0.0.1' : hostname;
+    const apiBase = `http://${host}:8000`;
+    const wsUrl = `ws://${host}:8765`;
 
-    const tryNext = (i) => {
-      if (i >= unique.length) {
-        console.log('[Observatory] No sensing server detected, using demo mode');
-        return;
-      }
-      const base = unique[i];
-      fetch(`${base}/health`, { signal: AbortSignal.timeout(1500) })
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(data => {
-          if (data && data.status === 'ok') {
-            const wsProto = base.startsWith('https') ? 'wss:' : 'ws:';
-            const urlObj = new URL(base);
-            const wsUrl = `${wsProto}//${urlObj.host}/ws/sensing`;
-            console.log('[Observatory] Sensing server detected at', base, '→', wsUrl);
-            this.settings.dataSource = 'ws';
-            this.settings.wsUrl = wsUrl;
-            this._connectWS(wsUrl);
-          } else {
-            tryNext(i + 1);
-          }
-        })
-        .catch(() => tryNext(i + 1));
-    };
-    tryNext(0);
+    fetch(`${apiBase}/health/live`, { signal: AbortSignal.timeout(1500) })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        if (data && data.status === 'alive') {
+          console.log('[Observatory] Sensing server detected at', apiBase, '→', wsUrl);
+          this.settings.dataSource = 'ws';
+          this.settings.wsUrl = wsUrl;
+          this._connectWS(wsUrl);
+        } else {
+          console.log('[Observatory] No live sensing server detected, using demo mode');
+        }
+      })
+      .catch(() => {
+        console.log('[Observatory] No live sensing server detected, using demo mode');
+      });
   }
 
   _connectWS(url) {

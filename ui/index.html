@@ -31,7 +31,6 @@
         <nav class="nav-tabs" role="tablist" aria-label="Main navigation">
             <button class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="dashboard">Dashboard</button>
             <button class="nav-tab" data-tab="hardware" role="tab" aria-selected="false" aria-controls="hardware">Hardware</button>
-            <button class="nav-tab" data-tab="demo" role="tab" aria-selected="false" aria-controls="demo">Live Demo</button>
             <button class="nav-tab" data-tab="architecture" role="tab" aria-selected="false" aria-controls="architecture">Architecture</button>
             <button class="nav-tab" data-tab="performance" role="tab" aria-selected="false" aria-controls="performance">Performance</button>
             <button class="nav-tab" data-tab="applications" role="tab" aria-selected="false" aria-controls="applications">Applications</button>
@@ -267,57 +266,7 @@
         </section>
 
         <!-- Demo Tab -->
-        <section id="demo" class="tab-content" role="tabpanel" aria-labelledby="demo" aria-hidden="true">
-            <h2>Live Demonstration</h2>
-            
-            <div class="demo-controls">
-                <button id="startDemo" class="btn btn--primary">Start Stream</button>
-                <button id="stopDemo" class="btn btn--secondary" disabled>Stop Stream</button>
-                <div class="demo-status">
-                    <span class="status status--info" id="demoStatus">Ready</span>
-                </div>
-            </div>
 
-            <div class="demo-grid">
-                <div class="signal-panel">
-                    <h3>WiFi Signal Analysis</h3>
-                    <div class="signal-display">
-                        <canvas id="signalCanvas" width="400" height="200"></canvas>
-                    </div>
-                    <div class="signal-metrics">
-                        <div class="metric">
-                            <span>Signal Strength:</span>
-                            <span id="signalStrength">-45 dBm</span>
-                        </div>
-                        <div class="metric">
-                            <span>Processing Latency:</span>
-                            <span id="latency">12 ms</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pose-panel">
-                    <h3>Human Pose Detection</h3>
-                    <div class="pose-display">
-                        <canvas id="poseCanvas" width="400" height="300"></canvas>
-                    </div>
-                    <div class="detection-info">
-                        <div class="info-item">
-                            <span>Persons Detected:</span>
-                            <span id="personCount">0</span>
-                        </div>
-                        <div class="info-item">
-                            <span>Confidence:</span>
-                            <span id="confidence">0.0%</span>
-                        </div>
-                        <div class="info-item">
-                            <span>Keypoints:</span>
-                            <span id="keypoints">0/0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Architecture Tab -->
         <section id="architecture" class="tab-content" role="tabpanel" aria-labelledby="architecture" aria-hidden="true">

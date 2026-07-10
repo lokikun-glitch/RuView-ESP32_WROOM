@@ -174,11 +174,13 @@ menu "AMOLED Display (ADR-045)"
 
     config DISPLAY_ENABLE
         bool "Enable AMOLED display support"
-        default y
+        default n
         help
             Enable RM67162 QSPI AMOLED display and LVGL UI.
             Auto-detects at boot; gracefully skips if no display hardware.
             Requires SPIRAM for frame buffers.
+            DISABLED by default: the reference ESP32-WROOM-32 board has no
+            QSPI AMOLED panel.  Enable on S3/WROVER boards that do.
 
     config DISPLAY_FPS_LIMIT
         int "Display refresh rate limit (FPS)"
@@ -255,11 +257,14 @@ menu "WASM Programmable Sensing (ADR-040)"
 
     config WASM_ENABLE
         bool "Enable WASM Tier 3 runtime"
-        default y
+        default n
         help
             Enable the WASM3 interpreter for hot-loadable sensing modules.
             Requires WASM3 source in components/wasm3/wasm3-src/.
             Adds ~120 KB flash and ~20 KB SRAM.
+            DISABLED by default: module data is stored in PSRAM (128 KB each);
+            ESP32-WROOM-32 has no PSRAM.  Enable on WROVER-32 or custom
+            boards with external PSRAM.
 
     config WASM_MAX_MODULES
         int "Maximum concurrent WASM modules"
@@ -471,9 +476,21 @@ endmenu
 
 menu "Onboard LED (ADR-183)"
 
+    config LED_STRIP_GPIO
+        int "WS2812 LED strip GPIO pin"
+        default 2
+        range 0 39
+        help
+            GPIO pin connected to the WS2812 data line.
+            ESP32-S3 DevKitC-1 v1.1 / N16R8: GPIO 48.
+            ESP32-S3 DevKitC-1 v1.0:         GPIO 38.
+            ESP32-C6 DevKitC-1:               GPIO 8.
+            ESP32-WROOM-32 (external LED):    GPIO 2 (default; no onboard WS2812).
+            Change to match your board's actual wiring.
+
     config LED_GAMMA_VIZ
         bool "Onboard WS2812: 40 Hz gamma flicker + CSI-motion colour"
-        default y
+        default n
         help
             Drive the onboard WS2812 as a GENUS-style 40 Hz gamma square wave
             (12.5 ms on / 12.5 ms off, 50% duty). The ON-phase colour is live
@@ -483,6 +500,8 @@ menu "Onboard LED (ADR-183)"
             Disable to leave the LED off at boot — lower power, no flicker.
             NOTE: a 40 Hz flicker can affect photosensitive users; disable or
             shield the LED in those environments. Not a medical device.
+            DISABLED by default: the reference ESP32-WROOM-32 has no onboard
+            WS2812. Enable if your board has an external LED on LED_STRIP_GPIO.
 
     config LED_MOTION_FULLSCALE_MILLI
         int "Motion value (x1000) that saturates the colormap to yellow"

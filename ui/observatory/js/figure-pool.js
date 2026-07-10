@@ -372,8 +372,8 @@ export class FigurePool {
           bone.mesh.lookAt(_vecTo);
         }
 
-        bone.mesh.material.opacity = 0.85;
-        bone.mesh.material.emissiveIntensity = 0.3 + Math.abs(breathPulse) * 2.0;
+        bone.mesh.material.opacity = 0.95;
+        bone.mesh.material.emissiveIntensity = 0.5 + Math.abs(breathPulse) * 1.5;
       }
     }
 
@@ -382,7 +382,7 @@ export class FigurePool {
       if (seg.isHead) {
         const headJoint = fig.joints[seg.a];
         seg.mesh.position.set(headJoint.position.x, headJoint.position.y + 0.05, headJoint.position.z);
-        seg.mat.opacity = 0.15;
+        seg.mat.opacity = 0.08;
       } else {
         const jA = fig.joints[seg.a];
         const jB = fig.joints[seg.b];
@@ -391,10 +391,10 @@ export class FigurePool {
           seg.mesh.position.copy(jA.position);
           seg.mesh.scale.set(1, 1, len);
           seg.mesh.lookAt(jB.position);
-          seg.mat.opacity = 0.12;
+          seg.mat.opacity = 0.06;
         }
       }
-      seg.mat.emissiveIntensity = 0.1 + Math.abs(breathPulse) * 0.4;
+      seg.mat.emissiveIntensity = 0.04 + Math.abs(breathPulse) * 0.15;
     }
 
     // Aura — adapt shape to pose

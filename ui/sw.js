@@ -1,7 +1,7 @@
 // RuView Service Worker - Offline caching for the dashboard shell
 // Strategy: Network-first for API calls, Cache-first for static assets
 
-const CACHE_NAME = 'ruview-v1';
+const CACHE_NAME = 'wifi-densepose-v3';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -11,7 +11,7 @@ const SHELL_ASSETS = [
   '/components/TabManager.js',
   '/components/DashboardTab.js',
   '/components/HardwareTab.js',
-  '/components/LiveDemoTab.js',
+
   '/components/SensingTab.js',
   '/components/PoseDetectionCanvas.js',
   '/services/api.service.js',

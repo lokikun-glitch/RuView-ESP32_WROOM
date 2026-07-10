@@ -10,9 +10,8 @@
  */
 
 const SENSING_WS_PORT_BY_HTTP_PORT = {
-  // Docker image: HTTP UI/API on 3000, sensing stream on 3001.
-  '3000': '3001',
-  // Python sensing stack: UI on 8080, sensing stream on 8765.
+  // Python sensing stack: UI on 3000 or 8080, sensing stream on 8765.
+  '3000': '8765',
   '8080': '8765',
 };
 
@@ -24,7 +23,7 @@ export function buildSensingWsUrl(locationLike = (typeof window !== 'undefined' 
   const wsPort = SENSING_WS_PORT_BY_HTTP_PORT[port];
   const wsHost = wsPort ? `${hostname}:${wsPort}` : host;
 
-  return `${protocol}//${wsHost}/ws/sensing`;
+  return `${protocol}//${wsHost}`;
 }
 
 const SENSING_WS_URL = buildSensingWsUrl();
@@ -291,7 +290,7 @@ class SensingService {
    */
   async _detectServerSource() {
     try {
-      const resp = await fetch('/api/v1/status');
+      const resp = await fetch('http://127.0.0.1:8000/api/v1/status');
       if (resp.ok) {
         const json = await resp.json();
         this._applyServerSource(json.source);

@@ -80,7 +80,7 @@ class PoseStreamHandler:
     async def _stream_loop(self):
         """Main streaming loop."""
         try:
-            logger.info("🚀 Starting pose streaming loop")
+            logger.info("Starting pose streaming loop")
             while self.is_streaming:
                 try:
                     # Get current pose data from all zones
@@ -106,7 +106,7 @@ class PoseStreamHandler:
         except Exception as e:
             logger.error(f"Fatal error in pose streaming loop: {e}")
         finally:
-            logger.info("🛑 Pose streaming loop stopped")
+            self.logger.info("Pose streaming loop stopped")
             self.is_streaming = False
     
     async def _process_and_broadcast_pose_data(self, raw_pose_data: Dict[str, Any]):
@@ -158,7 +158,7 @@ class PoseStreamHandler:
             if pose_data.metadata and self.stream_config["include_metadata"]:
                 broadcast_data["metadata"] = pose_data.metadata
             
-            logger.debug(f"📤 Broadcasting data: {broadcast_data}")
+            logger.debug(f"Broadcasting data: {broadcast_data}")
             
             # Broadcast to pose stream subscribers
             sent_count = await self.connection_manager.broadcast(
@@ -167,7 +167,8 @@ class PoseStreamHandler:
                 zone_ids=[pose_data.zone_id]
             )
             
-            logger.info(f"✅ Broadcasted pose data for zone {pose_data.zone_id} to {sent_count} clients")
+            if sent_count > 0:
+                logger.info(f"Broadcasted pose data for zone {pose_data.zone_id} to {sent_count} clients")
         
         except Exception as e:
             logger.error(f"Error broadcasting pose data: {e}")

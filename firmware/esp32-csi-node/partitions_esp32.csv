@@ -1,0 +1,14 @@
+# ESP32 (ESP-WROOM-32 / ESP32-D0WD) CSI Node — 4 MB flash partition table
+#
+# Flash size: 4 MB (matches ESP-WROOM-32 factory spec).
+# Two OTA slots each 1.875 MB — adequate for the CSI-node binary (~600-900 KB
+# depending on enabled features).  NVS is 24 KB; phy_init is 4 KB.
+#
+# Layout identical to partitions_4mb.csv but with corrected target comments.
+#
+# Name,      Type, SubType, Offset,   Size,      Flags
+nvs,         data, nvs,     0x9000,   0x6000,
+otadata,     data, ota,     0xF000,   0x2000,
+phy_init,    data, phy,     0x11000,  0x1000,
+ota_0,       app,  ota_0,   0x20000,  0x1D0000,
+ota_1,       app,  ota_1,   0x1F0000, 0x1D0000,
