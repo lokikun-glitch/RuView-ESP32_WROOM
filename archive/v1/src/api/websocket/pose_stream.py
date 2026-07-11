@@ -85,7 +85,8 @@ class PoseStreamHandler:
                 try:
                     # Get current pose data from all zones
                     logger.debug("📡 Getting current pose data...")
-                    pose_data = await self.pose_service.get_current_pose_data()
+                    result = await self.pose_service.estimate_poses()
+                    pose_data = {"zone_1": {"pose": result, "confidence": max([p.get("confidence", 0.0) for p in result.get("persons", [])] + [0.0])}} if result else {}
                     logger.debug(f"📊 Received pose data: {pose_data}")
                     
                     if pose_data:
