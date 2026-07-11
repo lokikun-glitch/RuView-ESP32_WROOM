@@ -574,12 +574,15 @@ class PoseService:
                     "confidence_scores": [p.get("confidence", 0.0) for p in mock_poses],
                 }
             else:
-                raise NotImplementedError(
-                    "Pose estimation requires real CSI data input. No CSI data was provided "
-                    "and mock_pose_data is disabled. Either pass csi_data from hardware "
-                    "collection, or enable mock_pose_data for development. "
-                    "See docs/hardware-setup.md for CSI data collection setup."
-                )
+                # No CSI data received yet from hardware, return empty poses
+                start_time = datetime.now()
+                result = {
+                    "timestamp": start_time.isoformat(),
+                    "poses": [],
+                    "metadata": metadata,
+                    "processing_time_ms": 0.0,
+                    "confidence_scores": [],
+                }
 
             # Format for API response
             persons = []
