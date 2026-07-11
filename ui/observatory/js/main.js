@@ -466,7 +466,20 @@ class Observatory {
         console.log('[Observatory] WebSocket connected');
         this._hud.updateSourceBadge('ws', this._ws);
       };
-      this._ws.onmessage = (evt) => { try { this._liveData = JSON.parse(evt.data); } catch {} };
+      this._ws.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data && data.classification?.presence && (!data.persons || data.persons.length === 0)) {
+            const activity = data.classification.motion_level;
+            let pose = 'standing', ms = 50;
+            if (activity === 'active') { pose = 'walking'; ms = 100; }
+            else if (activity === 'present_still') { pose = 'standing'; ms = 20; }
+            data.persons = [{ id: 'p0', position: [0, 0, 0], motion_score: ms, pose, facing: 0 }];
+            data.estimated_persons = 1;
+          }
+          this._liveData = data;
+        } catch {}
+      };
       this._ws.onclose = () => {
         console.log('[Observatory] WebSocket closed, falling back to demo');
         this._ws = null;
