@@ -1,4 +1,4 @@
-$p = New-Object System.IO.Ports.SerialPort('COM7', 115200)
+$p = New-Object System.IO.Ports.SerialPort('COM19', 115200)
 $p.ReadTimeout = 5000
 $p.Open()
 Start-Sleep -Milliseconds 200

@@ -453,12 +453,12 @@ async def get_active_model():
     """Mock active model endpoint for UI compatibility."""
     return None
 
-@app.get(f"{settings.api_prefix}/training/status")
+@app.get(f"{settings.api_prefix}/train/status")
 async def get_training_status():
     """Mock training status endpoint for UI compatibility."""
     return {"status": "idle"}
 
-@app.get(f"{settings.api_prefix}/recording")
+@app.get(f"{settings.api_prefix}/recording/list")
 async def list_recordings():
     """Mock recording endpoint for UI compatibility."""
     return []
