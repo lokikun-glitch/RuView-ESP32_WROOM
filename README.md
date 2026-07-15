@@ -1,4 +1,5 @@
-# π RuView
+
+# π RuView (ESP32-WROOM Edition)
 
 <p align="center">
   <a href="https://cognitum.one/seed">
@@ -10,6 +11,9 @@
     <img src="assets/seed.png" alt="Cognitum Seed" width="100%">
   </a>
 </p>
+
+> [!NOTE]
+> **ESP32-WROOM Edition**: This repository is a specialized variation of the original RuView platform. It is designed to act as an Edge Compute layer powered directly by an ESP32-WROOM node, which streams raw Channel State Information (CSI) over UDP to dynamically render a 33-keypoint heuristic skeleton.
 
 ## **See through walls with WiFi** ##
 
