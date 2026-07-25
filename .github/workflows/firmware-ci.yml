@@ -49,14 +49,14 @@ jobs:
       matrix:
         include:
           - variant: 8mb
-            target: esp32s3
+            target: esp32
             sdkconfig: sdkconfig.defaults
             partition_table_name: partitions_display.csv
             size_limit_kb: 1100
             artifact_app: esp32-csi-node.bin
             artifact_pt: partition-table.bin
           - variant: 4mb
-            target: esp32s3
+            target: esp32
             sdkconfig: sdkconfig.defaults.4mb
             partition_table_name: partitions_4mb.csv
             size_limit_kb: 1100
@@ -160,10 +160,10 @@ jobs:
           fi
           ls -la release-staging/
 
-      - name: Check QEMU ESP32-S3 support status
+      - name: Check QEMU ESP32-WROOM support status
         run: |
-          echo "::notice::ESP32-S3 QEMU support is experimental in ESP-IDF v5.4. "
-          echo "Full smoke testing requires QEMU 8.2+ with xtensa-esp32s3 target."
+          echo "::notice::ESP32-WROOM QEMU support is experimental in ESP-IDF v5.4. "
+          echo "Full smoke testing requires QEMU 8.2+ with xtensa-esp32 target."
           echo "See: https://github.com/espressif/qemu/wiki"
 
       - name: Upload firmware artifact (${{ matrix.variant }})

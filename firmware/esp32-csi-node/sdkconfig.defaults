@@ -1,68 +1,90 @@
-# ESP32-S3 CSI Node — Default SDK Configuration
-# This file is applied automatically by idf.py when no sdkconfig exists.
+# ESP32 (ESP-WROOM-32 / ESP32-D0WD) CSI Node — Default SDK Configuration
+# Port of the RuView ESP32-S3 firmware to the original ESP32.
+#
+# Build:
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults.esp32" set-target esp32 && idf.py build
+#
+# Flash:
+#   idf.py -p <PORT> flash monitor
+#
+# Differences from sdkconfig.defaults (S3):
+#   - Target: esp32 (240 MHz dual-core Xtensa LX6, 520 KB SRAM, no PSRAM on WROOM-32)
+#   - Flash: 4 MB (ESP-WROOM-32 spec); OTA partition table sized accordingly
+#   - Display: disabled (no QSPI AMOLED hardware on reference WROOM-32 board)
+#   - WASM:    disabled (requires PSRAM; absent on WROOM-32 — re-enable on WROVER)
+#   - LED:     disabled by default (no onboard WS2812 on reference board; set
+#              CONFIG_LED_GAMMA_VIZ=y + CONFIG_LED_STRIP_GPIO=<pin> if you have one)
+#   - Power management: 240/80 MHz range (matches ESP32 hardware limits)
+#   - Removed CONFIG_ESP_WIFI_EXTRA_IRAM_OPT — symbol does not exist on ESP32 IDF target
 
-# Target: ESP32-S3
-CONFIG_IDF_TARGET="esp32s3"
+# ── Target ──────────────────────────────────────────────────────────────────
+CONFIG_IDF_TARGET="esp32"
 
-# Use custom partition table (8MB flash with OTA — ADR-045)
+# ── Flash & partition table ──────────────────────────────────────────────────
+# ESP-WROOM-32 ships with 4 MB flash (QIO, 80 MHz).
 CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_display.csv"
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_esp32.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 
-# Flash configuration: 8MB (Quad SPI)
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
-
-# Compiler optimization: optimize for size to reduce binary
+# ── Compiler ─────────────────────────────────────────────────────────────────
+# Optimize for size — keeps the binary inside the 1.875 MB OTA slot.
 CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 
-# Enable CSI (Channel State Information) in WiFi driver
+# ── WiFi / CSI ───────────────────────────────────────────────────────────────
+# CSI capture is the core purpose of this firmware; must be enabled.
 CONFIG_ESP_WIFI_CSI_ENABLED=y
 
-# NVS encryption disabled by default (requires eFuse provisioning).
-# Enable only after burning HMAC key to eFuse block.
-# CONFIG_NVS_ENCRYPTION is not set
+# Disable modem sleep by default (controlled at runtime by power_mgmt.c).
+# power_mgmt_init() re-enables when duty_cycle < 100.
+# NOTE: CONFIG_ESP_WIFI_EXTRA_IRAM_OPT is an S3/C6-only symbol — not set here.
 
-# Disable unused features to reduce binary size
+# ── Power management ─────────────────────────────────────────────────────────
+# ESP32 clock range: 80 MHz minimum, 240 MHz maximum.
+# Automatic light sleep is gated by CONFIG_PM_ENABLE (set in menuconfig if
+# needed) and by power_mgmt_init() at runtime.
+CONFIG_PM_ENABLE=y
+
+# ── Logging ──────────────────────────────────────────────────────────────────
 CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 
-# LWIP: enable extended socket options for UDP multicast
+# ── lwIP / UDP tuning ────────────────────────────────────────────────────────
+# Same tuning that fixed ENOMEM drops on S3/C6 (see sdkconfig.defaults comment
+# block for the full measurement rationale, issue cluster #946/#949/#864).
 CONFIG_LWIP_SO_RCVBUF=y
-
-# Issue (sibling of #946/#949/#864 cluster): UDP `sendto` returned ENOMEM
-# in a tight loop on both ESP32-S3 (COM8) and ESP32-C6 (COM9) at the v0.7.0
-# CSI packet rate (CSI cb + status + sync + feature_state all sharing the
-# LWIP/WiFi pools). stream_sender.c has a cooldown path so the device
-# doesn't crash, but ~90 % of CSI frames were dropped before reaching the
-# host — boot trace showed `sendto ENOMEM — backing off 100 ms` repeating
-# every capture cycle. Stock IDF v5.4 defaults: UDP recv mbox=6, TCPIP
-# mbox=32, WiFi dynamic TX buffers=32 — too small once CSI promiscuous
-# mode is active. These bumps roughly quadruple the relevant pools at
-# ~3 KB extra heap cost, measured live on both targets Jun 8 2026.
 CONFIG_LWIP_UDP_RECVMBOX_SIZE=32
 CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
 CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=64
-# NOTE: Empirical 25 s measurements on the S3 at COM8 showed these bumps
-# eliminate the csi_collector.sendto failure path (`fail #1..5` →
-# `fail #0`) — real improvement — but do NOT eliminate the broader
-# `feature_state emit` ENOMEM at ~10/s. That residual is the WiFi
-# radio's TX airtime saturating under CSI promiscuous RX, and bigger
-# buffers cap out at the 100 ms backoff window regardless of size
-# (verified at WIFI_DYNAMIC_TX=128 + PBUF_POOL=32 — identical count).
-# The proper fix is rate-limiting adaptive_controller.c's emit cadence
-# from ~50 ms to the intended 1 Hz, which is a code refactor tracked
-# in a separate follow-up issue.
 
-# FreeRTOS: increase task stack for CSI processing
+# ── FreeRTOS stack sizes ──────────────────────────────────────────────────────
+# Main task needs headroom for CSI + edge processing init.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
-
-# Extra WiFi IRAM placement (defense-in-depth for RuView#396 SPI cache race)
-CONFIG_ESP_WIFI_EXTRA_IRAM_OPT=y
-
-# ADR-081: adaptive_controller runs emit_feature_state + stream_sender
-# network I/O inside Timer Svc callbacks, exceeding the 2 KiB default.
-# Without this, the device bootloops with
-# "***ERROR*** A stack overflow in task Tmr Svc has been detected."
-# Was present in sdkconfig.defaults.template but missing here — fixed
-# in the v0.6.5-esp32 release.
+# Timer task runs adaptive_controller emit + stream_sender network I/O.
+# Without this the device bootloops with "stack overflow in task Tmr Svc".
 CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=8192
+
+# ── Feature flags (ESP32 WROOM-32 defaults) ───────────────────────────────────
+
+# Display: disabled — no QSPI AMOLED on reference WROOM-32 board.
+# To enable: attach an SPI-based display, update display_hal.c pin defs,
+# and re-enable CONFIG_DISPLAY_ENABLE=y (also requires CONFIG_SPIRAM for buffers).
+# CONFIG_DISPLAY_ENABLE is not set
+
+# WASM: disabled — requires PSRAM (absent on WROOM-32, present on WROVER-32).
+# To enable: use an ESP32-WROVER module, add CONFIG_SPIRAM=y, then set WASM_ENABLE=y.
+# CONFIG_WASM_ENABLE is not set
+
+# LED Gamma Visualization (ADR-183): disabled by default.
+# The reference ESP-WROOM-32 has no onboard WS2812.
+# To enable: connect a WS2812 to a spare GPIO (e.g., GPIO 2 or GPIO 4),
+# then set CONFIG_LED_GAMMA_VIZ=y and CONFIG_LED_STRIP_GPIO=<pin> in menuconfig
+# or append to a local sdkconfig fragment.
+# CONFIG_LED_GAMMA_VIZ is not set
+
+# ── NVS ──────────────────────────────────────────────────────────────────────
+# NVS encryption disabled by default (requires eFuse provisioning).
+# Enable only after burning HMAC key to eFuse block.
+# CONFIG_NVS_ENCRYPTION is not set

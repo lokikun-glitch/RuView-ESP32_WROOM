@@ -51,7 +51,7 @@ RuView turns ordinary WiFi into a contactless sensor. A $9 ESP32 board reads the
 [![Tests: 1463](https://img.shields.io/badge/tests-1463%20passed-brightgreen.svg)](https://github.com/ruvnet/RuView)
 [![Docker: multi-arch](https://img.shields.io/badge/docker-amd64%20%2B%20arm64-blue.svg)](https://hub.docker.com/r/ruvnet/wifi-densepose)
 [![Vital Signs](https://img.shields.io/badge/vital%20signs-breathing%20%2B%20heartbeat-red.svg)](#vital-sign-detection)
-[![ESP32 Ready](https://img.shields.io/badge/ESP32--S3-CSI%20streaming-purple.svg)](#esp32-s3-hardware-pipeline)
+[![ESP32 Ready](https://img.shields.io/badge/ESP32--WROOM-CSI%20streaming-purple.svg)](#esp32-hardware-pipeline)
 [![crates.io](https://img.shields.io/crates/v/wifi-densepose-ruvector.svg)](https://crates.io/crates/wifi-densepose-ruvector)
 [![Downloads](https://img.shields.io/badge/downloads-10M%2B-brightgreen.svg)](#-edge-module-catalog)
 
@@ -84,27 +84,14 @@ docker pull ruvnet/wifi-densepose:latest
 docker run -p 3000:3000 ruvnet/wifi-densepose:latest
 # Open http://localhost:3000
 
-# Option 2a: Live sensing with ESP32-S3 hardware ($9)
+# Option 2a: Live sensing with ESP32-WROOM hardware ($9)
 # Flash firmware, provision WiFi, and start sensing:
-python -m esptool --chip esp32s3 --port COM9 --baud 460800 \
+python -m esptool --chip esp32 --port COM9 --baud 460800 \
   write_flash 0x0 bootloader.bin 0x8000 partition-table.bin \
   0xf000 ota_data_initial.bin 0x20000 esp32-csi-node.bin
 python firmware/esp32-csi-node/provision.py --port COM9 \
   --ssid "YourWiFi" --password "secret" --target-ip 192.168.1.20
 
-# Option 2b: WiFi 6 + 802.15.4 research sensing with ESP32-C6 ($6-10, ADR-110)
-# Same csi-node firmware compiled for the C6 target — picks up the C6
-# overlay (sdkconfig.defaults.esp32c6) automatically.
-cd firmware/esp32-csi-node
-idf.py set-target esp32c6 && idf.py build
-idf.py -p COM6 flash
-# C6 boot extras (vs S3): HE-LTF subcarrier tagging in ADR-018 bytes 18-19,
-#   802.15.4 mesh time-sync on channel 15, TWT setup when the AP supports it,
-#   opt-in LP-core wake-on-motion for ~5 µA battery seed nodes.
-# v0.6.7 adds: real LP-core RISC-V motion-gate program (debounce + motion
-#   counter) and a Wi-Fi 6 soft-AP with TWT Responder so two C6 boards can
-#   benchmark real iTWT without buying an 11ax router. Both default off,
-#   flip CONFIG_C6_{LP_CORE,SOFTAP_HE}_ENABLE to turn them on.
 
 # Option 3: Full system with Cognitum Seed ($140)
 # ESP32 streams CSI → bridge forwards to Seed for persistent storage + kNN + witness chain
@@ -126,15 +113,14 @@ pip install "ruview[client]"              # or: pip install "wifi-densepose[clie
 [![PyPI ruview](https://img.shields.io/pypi/v/ruview?label=ruview)](https://pypi.org/project/ruview/) [![PyPI wifi-densepose](https://img.shields.io/pypi/v/wifi-densepose?label=wifi-densepose)](https://pypi.org/project/wifi-densepose/)
 
 > [!NOTE]
-> **CSI-capable hardware recommended.** Presence, vital signs, through-wall sensing, and all advanced capabilities require Channel State Information (CSI) from an ESP32-S3 ($9) or research NIC. The Docker image runs with simulated data for evaluation. Consumer WiFi laptops provide RSSI-only presence detection.
+> **CSI-capable hardware recommended.** Presence, vital signs, through-wall sensing, and all advanced capabilities require Channel State Information (CSI) from an ESP32-WROOM ($9) or research NIC. The Docker image runs with simulated data for evaluation. Consumer WiFi laptops provide RSSI-only presence detection.
 
 > **Hardware options** for live CSI capture:
 >
 > | Option | Hardware | Cost | Full CSI | Capabilities |
 > |--------|----------|------|----------|-------------|
-> | **ESP32 + Cognitum Seed** (recommended) | ESP32-S3 + [Cognitum Seed](https://cognitum.one) | ~$140 | Yes | Presence, motion, breathing, heart rate, fall detection, multi-person counting, 17-keypoint pose (signed Cog binary), 105-cog catalog, persistent vector store, kNN search, witness chain, MCP proxy |
-> | **ESP32 Mesh** | 3-6× ESP32-S3 + WiFi router | ~$54 | Yes | Same capabilities as above without the persistent-memory features |
-> | **ESP32-C6 research node** ([ADR-110](docs/adr/ADR-110-esp32-c6-firmware-extension.md), [witness](docs/WITNESS-LOG-110.md), [reviewer guide](docs/ADR-110-REVIEW-GUIDE.md), [firmware v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32)) | ESP32-C6-DevKit ($6–10) | ~$10 | Yes (Wi-Fi 6 capable) | Same CSI pipeline as S3 with the dual-target firmware. **Firmware-side ADR-110 substrate now closed** (v0.7.0): ESP-NOW cross-board mesh quantified at **99.56 % match / 104 µs smoothed offset stdev / 3.95× EMA suppression** over a 5-min two-board soak (witness §A0.10), 32-byte UDP sync packet with operator-tunable cadence (§A0.12), ADR-018 byte 19 bit 4 wire-fix sourced from the working ESP-NOW path (§A0.13). Wire format ready for HE-LTF PPDU tagging in ADR-018 bytes 18-19 (firmware encoder + Rust + Python decoders verified end-to-end across 23 unit tests). LP-core motion-gate RISC-V program and Wi-Fi 6 soft-AP with TWT Responder both ship as opt-in code paths (default off). **Hardware-gated for measurement**: HE-LTF live subcarrier capture needs an 11ax AP (IDF v5.4 doesn't expose AP-side HE config — §A0.6); ~5 µA LP-core hibernation needs an INA meter to capture; 802.15.4 raw RX is broken in IDF v5.4 (workaround: ESP-NOW transport, shipped + measured). See witness log for the empirical / claimed split. |
+> | **ESP32 + Cognitum Seed** (recommended) | ESP32-WROOM + [Cognitum Seed](https://cognitum.one) | ~$140 | Yes | Presence, motion, breathing, heart rate, fall detection, multi-person counting, 17-keypoint pose (signed Cog binary), 105-cog catalog, persistent vector store, kNN search, witness chain, MCP proxy |
+> | **ESP32 Mesh** | 3-6× ESP32-WROOM + WiFi router | ~$54 | Yes | Same capabilities as above without the persistent-memory features |
 > | **Research NIC** | Intel 5300 / Atheros AR9580 | ~$50-100 | Yes | Full CSI with 3x3 MIMO |
 > | **Any WiFi** | Windows, macOS, or Linux laptop | $0 | No | RSSI-only: coarse presence and motion (see [tutorial #36](https://github.com/ruvnet/RuView/issues/36)) |
 >
@@ -157,9 +143,9 @@ pip install "ruview[client]"              # or: pip install "wifi-densepose[clie
   &nbsp;|&nbsp;
   <a href="https://ruvnet.github.io/RuView/three.js/"><strong>▶ three.js Demos (5)</strong></a>
 
-> The [server](#-quick-start) is optional for visualization and aggregation — the ESP32 [runs independently](#esp32-s3-hardware-pipeline) for presence detection, vital signs, and fall alerts.
+> The [server](#-quick-start) is optional for visualization and aggregation — the ESP32 [runs independently](#esp32-hardware-pipeline) for presence detection, vital signs, and fall alerts.
 >
-> **Live ESP32 pipeline**: Connect an ESP32-S3 node → run the [sensing server](#sensing-server) → open the [pose fusion demo](https://ruvnet.github.io/RuView/pose-fusion.html) for real-time dual-modal pose estimation (webcam + WiFi CSI). See [ADR-059](docs/adr/ADR-059-live-esp32-csi-pipeline.md).
+> **Live ESP32 pipeline**: Connect an ESP32-WROOM node → run the [sensing server](#sensing-server) → open the [pose fusion demo](https://ruvnet.github.io/RuView/pose-fusion.html) for real-time dual-modal pose estimation (webcam + WiFi CSI). See [ADR-059](docs/adr/ADR-059-live-esp32-csi-pipeline.md).
 >
 > **three.js scene gallery** at [`/three.js/`](https://ruvnet.github.io/RuView/three.js/) — five progressively richer ADR-097 demos: helpers, cinematic, GLTF skinned, FBX skinned, and a live MediaPipe→Mixamo retargeting feed driven by ESP32 CSI. Demos 04 and 05 require a local Mixamo `X Bot.fbx` (license boundary — not redistributed).
 
@@ -430,7 +416,7 @@ WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just 
 
 | Use Case | What It Does | Hardware | Key Metric | Edge Module |
 |----------|-------------|----------|------------|-------------|
-| **Elderly care / assisted living** | Fall detection, nighttime activity monitoring, breathing rate during sleep — no wearable compliance needed | 1 ESP32-S3 per room ($8) | Fall alert <2s | [Sleep Apnea](docs/edge-modules/medical.md), [Gait Analysis](docs/edge-modules/medical.md) |
+| **Elderly care / assisted living** | Fall detection, nighttime activity monitoring, breathing rate during sleep — no wearable compliance needed | 1 ESP32-WROOM per room ($8) | Fall alert <2s | [Sleep Apnea](docs/edge-modules/medical.md), [Gait Analysis](docs/edge-modules/medical.md) |
 | **Hospital patient monitoring** | Continuous breathing + heart rate for non-critical beds without wired sensors; nurse alert on anomaly | 1-2 APs per ward | Breathing: 6-30 BPM | [Respiratory Distress](docs/edge-modules/medical.md), [Cardiac Arrhythmia](docs/edge-modules/medical.md) |
 | **Emergency room triage** | Automated occupancy count + wait-time estimation; detect patient distress (abnormal breathing) in waiting areas | Existing hospital WiFi | Occupancy accuracy >95% | [Queue Length](docs/edge-modules/retail.md), [Panic Motion](docs/edge-modules/security.md) |
 | **Retail occupancy & flow** | Real-time foot traffic, dwell time by zone, queue length — no cameras, no opt-in, GDPR-friendly | Existing store WiFi + 1 ESP32 | Dwell resolution ~1m | [Customer Flow](docs/edge-modules/retail.md), [Dwell Heatmap](docs/edge-modules/retail.md) |
@@ -446,9 +432,9 @@ WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just 
 
 | Use Case | What It Does | Hardware | Key Metric | Edge Module |
 |----------|-------------|----------|------------|-------------|
-| **Smart home automation** | Room-level presence triggers (lights, HVAC, music) that work through walls — no dead zones, no motion-sensor timeouts | 2-3 ESP32-S3 nodes ($24) | Through-wall range ~5m | [HVAC Presence](docs/edge-modules/building.md), [Lighting Zones](docs/edge-modules/building.md) |
-| **Fitness & sports** | Rep counting, posture correction, breathing cadence during exercise — no wearable, no camera in locker rooms | 3+ ESP32-S3 mesh | Pose: 17 keypoints | [Breathing Sync](docs/edge-modules/exotic.md), [Gait Analysis](docs/edge-modules/medical.md) |
-| **Childcare & schools** | Naptime breathing monitoring, playground headcount, restricted-area alerts — privacy-safe for minors | 2-4 ESP32-S3 per zone | Breathing: ±1 BPM | [Sleep Apnea](docs/edge-modules/medical.md), [Perimeter Breach](docs/edge-modules/security.md) |
+| **Smart home automation** | Room-level presence triggers (lights, HVAC, music) that work through walls — no dead zones, no motion-sensor timeouts | 2-3 ESP32-WROOM nodes ($24) | Through-wall range ~5m | [HVAC Presence](docs/edge-modules/building.md), [Lighting Zones](docs/edge-modules/building.md) |
+| **Fitness & sports** | Rep counting, posture correction, breathing cadence during exercise — no wearable, no camera in locker rooms | 3+ ESP32-WROOM mesh | Pose: 17 keypoints | [Breathing Sync](docs/edge-modules/exotic.md), [Gait Analysis](docs/edge-modules/medical.md) |
+| **Childcare & schools** | Naptime breathing monitoring, playground headcount, restricted-area alerts — privacy-safe for minors | 2-4 ESP32-WROOM per zone | Breathing: ±1 BPM | [Sleep Apnea](docs/edge-modules/medical.md), [Perimeter Breach](docs/edge-modules/security.md) |
 | **Event venues & concerts** | Crowd density mapping, crush-risk detection via breathing compression, emergency evacuation flow tracking | Multi-AP mesh (4-8 APs) | Density per m² | [Customer Flow](docs/edge-modules/retail.md), [Panic Motion](docs/edge-modules/security.md) |
 | **Stadiums & arenas** | Section-level occupancy for dynamic pricing, concession staffing, emergency egress flow modeling | Enterprise AP grid | 15-20 per AP mesh | [Dwell Heatmap](docs/edge-modules/retail.md), [Queue Length](docs/edge-modules/retail.md) |
 | **Houses of worship** | Attendance counting without facial recognition — privacy-sensitive congregations, multi-room campus tracking | Existing WiFi | Zone-level accuracy | [Elevator Count](docs/edge-modules/building.md), [Energy Audit](docs/edge-modules/building.md) |
@@ -465,9 +451,9 @@ WiFi sensing gives robots and autonomous systems a spatial awareness layer that 
 
 | Use Case | What It Does | Hardware | Key Metric | Edge Module |
 |----------|-------------|----------|------------|-------------|
-| **Cobot safety zones** | Detect human presence near collaborative robots — auto-slow or stop before contact, even behind obstructions | 2-3 ESP32-S3 per cell | Presence latency <100ms | [Forklift Proximity](docs/edge-modules/industrial.md), [Perimeter Breach](docs/edge-modules/security.md) |
+| **Cobot safety zones** | Detect human presence near collaborative robots — auto-slow or stop before contact, even behind obstructions | 2-3 ESP32-WROOM per cell | Presence latency <100ms | [Forklift Proximity](docs/edge-modules/industrial.md), [Perimeter Breach](docs/edge-modules/security.md) |
 | **Warehouse AMR navigation** | Autonomous mobile robots sense humans around blind corners, through shelving racks — no LIDAR occlusion | ESP32 mesh along aisles | Through-shelf detection | [Forklift Proximity](docs/edge-modules/industrial.md), [Loitering](docs/edge-modules/security.md) |
-| **Android / humanoid spatial awareness** | Ambient human pose sensing for social robots — detect gestures, approach direction, and personal space without cameras always on | Onboard ESP32-S3 module | 17-keypoint pose | [Gesture Language](docs/edge-modules/exotic.md), [Emotion Detection](docs/edge-modules/exotic.md) |
+| **Android / humanoid spatial awareness** | Ambient human pose sensing for social robots — detect gestures, approach direction, and personal space without cameras always on | Onboard ESP32-WROOM module | 17-keypoint pose | [Gesture Language](docs/edge-modules/exotic.md), [Emotion Detection](docs/edge-modules/exotic.md) |
 | **Manufacturing line monitoring** | Worker presence at each station, ergonomic posture alerts, headcount for shift compliance — works through equipment | Industrial AP per zone | Pose + breathing | [Confined Space](docs/edge-modules/industrial.md), [Gait Analysis](docs/edge-modules/medical.md) |
 | **Construction site safety** | Exclusion zone enforcement around heavy machinery, fall detection from scaffolding, personnel headcount | Ruggedized ESP32 mesh | Alert <2s, through-dust | [Panic Motion](docs/edge-modules/security.md), [Structural Vibration](docs/edge-modules/industrial.md) |
 | **Agricultural robotics** | Detect farm workers near autonomous harvesters in dusty/foggy field conditions where cameras are unreliable | Weatherproof ESP32 nodes | Range ~10m open field | [Forklift Proximity](docs/edge-modules/industrial.md), [Rain Detection](docs/edge-modules/exotic.md) |

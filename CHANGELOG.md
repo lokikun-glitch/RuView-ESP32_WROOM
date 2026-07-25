@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - **`@ruvnet/rvagent` startup optimization — stdio time-to-first-response ~242 ms → ~189 ms (−22%; MEASURED, median of repeated `initialize` round-trips against `dist/index.js`, this container, reproduce with a piped-stdin timer).** Two changes: (1) `./http-transport.js` is now imported **lazily** inside the `RVAGENT_HTTP_PORT` branch — it chain-loads the MCP SDK's `streamableHttp` module (~48 ms MEASURED via per-module `import()` timing), which the default stdio path never uses; (2) the advertised JSON Schemas generated from the Zod sources are memoized per tool instead of re-walking the Zod tree on every `tools/list` (matters under the session-per-server HTTP model where each session lists tools). No behavior change: 99/99 jest tests, HTTP session flow re-smoke-tested through the lazy path. The `@ruvnet/ruview` harness CLI was profiled too and left alone — 50 ms vs the ~29 ms bare `node -e ''` floor on the same box (MEASURED), i.e. already near the interpreter floor with zero dependencies.
 
 ### Fixed
@@ -87,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Published HuggingFace model was unloadable — RVF format mismatch (#894).** The `ProgressiveLoader` rejected the published `ruvnet/wifi-densepose-pretrained` model with the opaque `invalid magic at offset 0: expected 0x52564653 (RVFS), got 0x77455735`, then silently fell back to signal heuristics (the "10 persons for 1" garbage reporters saw). The HF repo ships `model.safetensors`, `model-q{2,4,8}.bin` (magic `0x77455735` = "5WEw"), and `model.rvf.jsonl` — none carry the binary-RVF magic. New `model_format` module **auto-detects** RVFS / safetensors / HF-quant-bin / JSONL by magic+name, returns a **typed actionable** `ModelLoadError` (lists accepted formats + the one-command convert path — never the opaque magic), and **converts** `model.safetensors` / `model.rvf.jsonl` → RVF in-memory so the published full-precision model now loads via `--model`. A `--convert-model <in> --convert-out <out>` CLI subcommand gives a one-command offline path; the silent heuristics fallback is now a loud, actionable error. **Honest scope:** the converter wires the format/load path (safetensors F32 tensors → RVF weight segment, manifest written, Layer A/B/C all succeed, weights round-trip) — it does **not** claim end-to-end pose accuracy, since the HF pose-decoder architecture differs from this crate's inference head (still data-gated in #894). Quantized `.bin` blobs are rejected with a typed error pointing at the safetensors path. Pinned by `safetensors_converts_and_loads` + `hf_quant_classifies_to_actionable_error` (both fail on the old opaque-magic path).
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - **ADR-157 Milestone-1 §5 #4 - native `wlanapi.dll` multi-BSSID throughput MEASURED on real hardware (`wifi-densepose-wifiscan`).** The ADR's prior status ("asserted but NOT implemented; live scanner is the ~2 Hz netsh shim") is now stale: `wlanapi_native.rs` already implements the real `WlanOpenHandle` -> `WlanEnumInterfaces` -> `WlanGetNetworkBssList` -> `WlanFreeMemory`/`WlanCloseHandle` FFI and `WlanApiScanner` already wires it native-first with a netsh fallback. This milestone **measured it on this box** (Intel Wi-Fi 7 BE201 320MHz, 2026-06-13): a new `benchmark_backend(backend, window)` drives each backend over the same fixed 10 s wall-clock window so netsh is timed independently (the prior `benchmark()` picked native-first and never measured netsh on a Windows box where native works). **MEASURED: native 21.42 Hz vs netsh 3.84 Hz = 5.57x** (mean 5.0 BSSIDs/scan, both paths); a separate native-only run measured 18.0 Hz. Native genuinely beats netsh - this is a real positive result, not a fabricated "10x". 50 back-to-back native scans completed 50/50 with no handle leak/degradation. Live-WLAN tests (`measure_native_vs_netsh_throughput`, `native_scans_dont_leak_handles`, `measure_native_scan_rate`) are `#[ignore]` for CI but were RUN here; `native_scan_runs_real_ffi_on_windows` is a non-ignored schema-valid pin. ADR-157 §5 #4 + §8 -> MEASURED (was ACCEPTED-FUTURE / CLAIMED-unmeasured).
 - **Mesh partition risk now demotes the privacy class and is witnessed (ADR-032).** The dynamic min-cut guard's `at_risk` signal was advisory-only (it fed the recalibration advisor). It now also contributes to the ADR-141 privacy demotion alongside fusion- and array-level contradictions: a mesh close to partitioning makes the fused belief less trustworthy, so the cycle emits at a more restricted class (monotonic — information only removed). Because `effective_class` feeds the BLAKE3 witness, a fragmenting array now shifts the witness — partition risk is auditable, not just logged. The mesh computation moved ahead of the demotion step in `process_cycle`; new `mesh_guard_mut()` exposes risk-threshold tuning. Test proves a forced-risk 3-node cycle demotes PrivateHome Anonymous→Restricted and shifts the witness vs a clean *same-topology* baseline (the only delta between the two cycles is the forced risk).
 
@@ -281,6 +283,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Resolves the security audit raised in #443.
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - **Docker image: build-time guard for the UI assets, plus a CI workflow that
   rebuilds and pushes on every change (closes #520, #514).** `docker/Dockerfile.rust`
   now `RUN`s a guard after `COPY ui/` that fails the build if any of
@@ -425,6 +428,7 @@ firing cleanly, HEALTH mesh packets sent.
 - **Firmware: `adaptive_controller.c` implicit declaration** (#404) — `fast_loop_cb` called `emit_feature_state()` before its static definition, triggering `-Werror=implicit-function-declaration`. Added a forward declaration above the first use.
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - **CI: firmware build matrix (8MB + 4MB)** — `firmware-ci.yml` now matrix-builds both the default 8MB (`sdkconfig.defaults`) and 4MB SuperMini (`sdkconfig.defaults.4mb`) variants, uploading distinct artifacts and producing variant-named release binaries (`esp32-csi-node.bin` / `esp32-csi-node-4mb.bin`, `partition-table.bin` / `partition-table-4mb.bin`).
 
 ### Added
@@ -608,6 +612,7 @@ Model release (no new firmware binary). Firmware remains at v0.6.0-esp32.
 - **UDP source filtering** — `--allowed-sources` argument restricts packet acceptance to known ESP32 IPs.
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - Wire format table now includes 6 magic numbers: `0xC5110001` (raw), `0xC5110002` (vitals), `0xC5110003` (features), `0xC5110004` (WASM events), `0xC5110005` (compressed), `0xC5110006` (fused vitals).
 
 ## [v0.5.3-esp32] — 2026-03-30
@@ -634,6 +639,7 @@ Model release (no new firmware binary). Firmware remains at v0.6.0-esp32.
 - **Skeleton jitter** — Removed tick-based noise, dampened procedural animation, recalibrated feature scaling for real ESP32 data.
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - Motion-responsive skeleton: arm swing (0-80px) driven by CSI variance, leg kick (0-50px) by motion_band_power, vertical bob when walking.
 - Person count thresholds recalibrated for real ESP32 hardware (1→2 at 0.70, EMA alpha 0.04).
 - Vital sign filtering: larger median window (31), faster EMA (0.05), looser HR jump filter (15 BPM).
@@ -907,6 +913,7 @@ Major release: complete Rust sensing server, full DensePose training pipeline, R
 - Commodity sensing unit tests (`b391638`)
 
 ### Changed
+- **Ported RuView firmware from ESP32-S3 to ESP32-WROOM.** Updated sdkconfig.defaults to target esp32 and 4MB flash by default, and updated CI workflows to build for the ESP32 WROOM target. Adjusted READMEs accordingly.
 - Rust hardware adapters now return explicit errors instead of silent empty data (`6e0e539`)
 
 ### Fixed

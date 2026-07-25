@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'firmware/**'
-      - 'scripts/qemu-esp32s3-test.sh'
+      - 'scripts/qemu-esp32-test.sh'
       - 'scripts/validate_qemu_output.py'
       - 'scripts/generate_nvs_matrix.py'
       - 'scripts/qemu_swarm.py'
@@ -14,7 +14,7 @@ on:
   pull_request:
     paths:
       - 'firmware/**'
-      - 'scripts/qemu-esp32s3-test.sh'
+      - 'scripts/qemu-esp32-test.sh'
       - 'scripts/validate_qemu_output.py'
       - 'scripts/generate_nvs_matrix.py'
       - 'scripts/qemu_swarm.py'
@@ -38,9 +38,9 @@ jobs:
         with:
           path: /opt/qemu-esp32
           # Include date component so cache refreshes monthly when branch updates
-          key: qemu-esp32s3-${{ env.QEMU_BRANCH }}-v5
+          key: qemu-esp32-${{ env.QEMU_BRANCH }}-v5
           restore-keys: |
-            qemu-esp32s3-${{ env.QEMU_BRANCH }}-
+            qemu-esp32-${{ env.QEMU_BRANCH }}-
 
       - name: Install QEMU build dependencies
         if: steps.cache-qemu.outputs.cache-hit != 'true'
@@ -120,11 +120,11 @@ jobs:
           . $IDF_PATH/export.sh
           pip install esptool esp-idf-nvs-partition-gen
 
-      - name: Set target ESP32-S3
+      - name: Set target ESP32-WROOM
         working-directory: firmware/esp32-csi-node
         run: |
           . $IDF_PATH/export.sh
-          idf.py set-target esp32s3
+          idf.py set-target esp32
 
       - name: Build firmware (mock CSI mode)
         working-directory: firmware/esp32-csi-node
@@ -152,7 +152,7 @@ jobs:
             OTA_ARGS="0xf000 build/ota_data_initial.bin"
           fi
 
-          python3 -m esptool --chip esp32s3 merge_bin \
+          python3 -m esptool --chip esp32 merge_bin \
             -o build/qemu_flash.bin \
             --flash_mode dio --flash_freq 80m --flash_size 8MB \
             --fill-flash-size 8MB \
@@ -186,7 +186,7 @@ jobs:
           echo "Starting QEMU (timeout: ${QEMU_TIMEOUT}s)..."
 
           timeout "$QEMU_TIMEOUT" "$QEMU_PATH" \
-            -machine esp32s3 \
+            -machine esp32 \
             -nographic \
             -drive file=firmware/esp32-csi-node/build/qemu_flash.bin,if=mtd,format=raw \
             -serial mon:stdio \
@@ -344,9 +344,9 @@ jobs:
         working-directory: firmware/esp32-csi-node
         run: |
           . $IDF_PATH/export.sh
-          idf.py set-target esp32s3
+          idf.py set-target esp32
           idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.qemu" build
-          python3 -m esptool --chip esp32s3 merge_bin \
+          python3 -m esptool --chip esp32 merge_bin \
             -o build/qemu_flash.bin \
             --flash_mode dio --flash_freq 80m --flash_size 8MB \
             --fill-flash-size 8MB \

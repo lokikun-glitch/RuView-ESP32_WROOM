@@ -2,10 +2,10 @@
 
 **Turn a $7 microcontroller into a privacy-first human sensing node.**
 
-This firmware captures WiFi Channel State Information (CSI) from an ESP32-S3 (production) or ESP32-C6 (research target — Wi-Fi 6 / 802.15.4 / TWT / LP-core hibernation, see [ADR-110](../../docs/adr/ADR-110-esp32-c6-firmware-extension.md)) and transforms it into real-time presence detection, vital sign monitoring, and programmable sensing -- all without cameras or wearables. Part of the [WiFi-DensePose](../../README.md) project.
+This firmware captures WiFi Channel State Information (CSI) from an ESP32-WROOM (production) or ESP32-C6 (research target — Wi-Fi 6 / 802.15.4 / TWT / LP-core hibernation, see [ADR-110](../../docs/adr/ADR-110-esp32-c6-firmware-extension.md)) and transforms it into real-time presence detection, vital sign monitoring, and programmable sensing -- all without cameras or wearables. Part of the [WiFi-DensePose](../../README.md) project.
 
 [![ESP-IDF v5.2](https://img.shields.io/badge/ESP--IDF-v5.2-blue.svg)](https://docs.espressif.com/projects/esp-idf/en/v5.2/)
-[![Target: ESP32-S3 / ESP32-C6](https://img.shields.io/badge/target-ESP32--S3%20%7C%20ESP32--C6-purple.svg)](https://www.espressif.com/en/products/socs/esp32-s3)
+[![Target: ESP32-WROOM / ESP32-C6](https://img.shields.io/badge/target-ESP32--S3%20%7C%20ESP32--C6-purple.svg)](https://www.espressif.com/en/products/socs/esp32-s3)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green.svg)](../../LICENSE)
 [![Binary: ~943 KB](https://img.shields.io/badge/binary-~943%20KB-orange.svg)](#memory-budget)
 [![CI: Docker Build](https://img.shields.io/badge/CI-Docker%20Build-brightgreen.svg)](../../.github/workflows/firmware-ci.yml)
@@ -31,7 +31,7 @@ Pre-built binaries are in `firmware/esp32-csi-node/release_bins/` (version: see 
 Flash them directly:
 
 ```bash
-python -m esptool --chip esp32s3 --port COM7 --baud 460800 \
+python -m esptool --chip esp32 --port COM7 --baud 460800 \
   write_flash --flash_mode dio --flash_size 8MB \
   0x0     firmware/esp32-csi-node/release_bins/bootloader.bin \
   0x8000  firmware/esp32-csi-node/release_bins/partition-table.bin \
@@ -49,7 +49,7 @@ with `--flash_size 4MB`.
 MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$(pwd)/firmware/esp32-csi-node:/project" -w /project \
   espressif/idf:v5.2 bash -c \
-  "rm -rf build sdkconfig && idf.py set-target esp32s3 && idf.py build"
+  "rm -rf build sdkconfig && idf.py set-target esp32 && idf.py build"
 ```
 
 ### 2. Flash
@@ -58,7 +58,7 @@ Offsets must match `partitions_display.csv` (8 MB) or `partitions_4mb.csv` (4 MB
 `bootloader=0x0`, `partition-table=0x8000`, `otadata=0xf000`, `app (ota_0)=0x20000`.
 
 ```bash
-python -m esptool --chip esp32s3 --port COM7 --baud 460800 \
+python -m esptool --chip esp32 --port COM7 --baud 460800 \
   write_flash --flash_mode dio --flash_size 8MB \
   0x0     firmware/esp32-csi-node/build/bootloader/bootloader.bin \
   0x8000  firmware/esp32-csi-node/build/partition_table/partition-table.bin \
@@ -96,11 +96,11 @@ curl http://<ESP32_IP>:8032/wasm/list
 
 | Component | Specification | Notes |
 |-----------|---------------|-------|
-| **SoC** | ESP32-S3 (QFN56) | Dual-core Xtensa LX7, 240 MHz |
+| **SoC** | ESP32-WROOM (QFN56) | Dual-core Xtensa LX7, 240 MHz |
 | **Flash** | 8 MB | ~943 KB used by firmware |
 | **PSRAM** | 8 MB | 640 KB used for WASM arenas |
 | **USB bridge** | Silicon Labs CP210x | Install the [CP210x driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) |
-| **Recommended boards** | ESP32-S3-DevKitC-1, XIAO ESP32-S3 | Any ESP32-S3 with 8 MB flash works |
+| **Recommended boards** | ESP32-WROOM-DevKitC-1, XIAO ESP32-WROOM | Any ESP32-WROOM with 4 MB flash works |
 | **Deployment** | 3-6 nodes per room | Multistatic mesh for 360-degree coverage |
 
 > **Tip:** A single node provides presence and vital signs along its line of sight. Multiple nodes (3-6) create a multistatic mesh that resolves 3D pose with <30 mm jitter and zero identity swaps.
@@ -112,7 +112,7 @@ curl http://<ESP32_IP>:8032/wasm/list
 The firmware implements a tiered processing pipeline. Each tier builds on the previous one. The active tier is selectable at compile time (Kconfig) or at runtime (NVS) without reflashing.
 
 ```
-                        ESP32-S3 CSI Node
+                        ESP32-WROOM CSI Node
 +--------------------------------------------------------------------------+
 |  Core 0 (WiFi)              |  Core 1 (DSP)                             |
 |                              |                                            |
@@ -239,7 +239,7 @@ Offset  Size  Field
 | Docker Desktop | 28.x+ | Cross-compile firmware in ESP-IDF container |
 | esptool | 5.x+ | Flash firmware to ESP32 (`pip install esptool`) |
 | Python 3.10+ | 3.10+ | Provisioning script, serial monitor |
-| ESP32-S3 board | -- | Target hardware |
+| ESP32-WROOM board | -- | Target hardware |
 | CP210x driver | -- | USB-UART bridge driver ([download](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers)) |
 
 > **Why Docker?** ESP-IDF does NOT work from Git Bash/MSYS2 on Windows. The `idf.py` script detects the `MSYSTEM` environment variable and skips `main()`. Even removing `MSYSTEM`, the `cmd.exe` subprocess injects `doskey` aliases that break the ninja linker. Docker is the only reliable cross-platform build method.
@@ -251,7 +251,7 @@ Offset  Size  Field
 MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$(pwd)/firmware/esp32-csi-node:/project" -w /project \
   espressif/idf:v5.2 bash -c \
-  "rm -rf build sdkconfig && idf.py set-target esp32s3 && idf.py build"
+  "rm -rf build sdkconfig && idf.py set-target esp32 && idf.py build"
 ```
 
 The `MSYS_NO_PATHCONV=1` prefix prevents Git Bash from mangling the `/project` path to `C:/Program Files/Git/project`.
@@ -269,13 +269,13 @@ To change Kconfig settings before building:
 MSYS_NO_PATHCONV=1 docker run --rm -it \
   -v "$(pwd)/firmware/esp32-csi-node:/project" -w /project \
   espressif/idf:v5.2 bash -c \
-  "idf.py set-target esp32s3 && idf.py menuconfig"
+  "idf.py set-target esp32 && idf.py menuconfig"
 ```
 
 Or create/edit `sdkconfig.defaults` before building:
 
 ```ini
-CONFIG_IDF_TARGET="esp32s3"
+CONFIG_IDF_TARGET="esp32"
 CONFIG_ESP_WIFI_CSI_ENABLED=y
 CONFIG_CSI_NODE_ID=1
 CONFIG_CSI_WIFI_SSID="wifi-densepose"
@@ -294,7 +294,7 @@ CONFIG_WASM_VERIFY_SIGNATURE=y
 Find your serial port: `COM7` on Windows, `/dev/ttyUSB0` on Linux, `/dev/cu.SLAB_USBtoUART` on macOS.
 
 ```bash
-python -m esptool --chip esp32s3 --port COM7 --baud 460800 \
+python -m esptool --chip esp32 --port COM7 --baud 460800 \
   write_flash --flash_mode dio --flash_size 8MB \
   0x0     firmware/esp32-csi-node/build/bootloader/bootloader.bin \
   0x8000  firmware/esp32-csi-node/build/partition_table/partition-table.bin \
@@ -312,7 +312,7 @@ Expected output after boot:
 
 ```
 I (396) csi_collector: Early capture node_id=1 (before WiFi init, #232/#390)
-I (406) main: ESP32-S3 CSI Node (ADR-018) -- v0.6.5 -- Node ID: 1
+I (406) main: ESP32-WROOM CSI Node (ADR-018) -- v0.6.5 -- Node ID: 1
 I (566) main: WiFi STA initialized, connecting to SSID: wifi-densepose
 I (1023) main: Connected to WiFi
 I (1025) main: CSI streaming active -> 192.168.1.100:5005 (edge_tier=2, OTA=ready, WASM=ready)
@@ -534,7 +534,7 @@ cargo build -p wifi-densepose-wasm-edge --target wasm32-unknown-unknown --releas
 ## Architecture Diagram
 
 ```
-ESP32-S3 Node                                 Host Machine
+ESP32-WROOM Node                                 Host Machine
 +------------------------------------------+  +---------------------------+
 | Core 0 (WiFi)      Core 1 (DSP)         |  |                           |
 |                                          |  |                           |
@@ -573,7 +573,7 @@ Test the firmware without physical hardware using Espressif's QEMU fork. A compi
 
 ### Prerequisites
 
-- **ESP-IDF v5.4** -- [installation guide](https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32s3/get-started/)
+- **ESP-IDF v5.4** -- [installation guide](https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32/get-started/)
 - **Espressif QEMU fork** -- must be built from source (not in Ubuntu packages):
 
 ```bash
@@ -595,14 +595,14 @@ cd firmware/esp32-csi-node
 idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.qemu" build
 
 # 2. Create merged flash image
-esptool.py --chip esp32s3 merge_bin -o build/qemu_flash.bin \
+esptool.py --chip esp32 merge_bin -o build/qemu_flash.bin \
   --flash_mode dio --flash_freq 80m --flash_size 8MB \
   0x0     build/bootloader/bootloader.bin \
   0x8000  build/partition_table/partition-table.bin \
   0x20000 build/esp32-csi-node.bin
 
 # 3. Run in QEMU
-qemu-system-xtensa -machine esp32s3 -nographic \
+qemu-system-xtensa -machine esp32 -nographic \
   -drive file=build/qemu_flash.bin,if=mtd,format=raw \
   -serial mon:stdio -no-reboot
 ```
@@ -683,7 +683,7 @@ QEMU provides a built-in GDB stub for zero-cost breakpoint debugging without JTA
 ```bash
 # Launch QEMU paused, with GDB stub on port 1234
 qemu-system-xtensa \
-  -machine esp32s3 -nographic \
+  -machine esp32 -nographic \
   -drive file=build/qemu_flash.bin,if=mtd,format=raw \
   -serial mon:stdio \
   -s -S
@@ -714,7 +714,7 @@ VS Code integration -- add to `.vscode/launch.json`:
 
 ```json
 {
-  "name": "QEMU ESP32-S3 Debug",
+  "name": "QEMU ESP32-WROOM Debug",
   "type": "cppdbg",
   "request": "launch",
   "program": "${workspaceFolder}/firmware/esp32-csi-node/build/esp32-csi-node.elf",
@@ -827,7 +827,7 @@ This firmware implements or references the following ADRs:
 | [ADR-040](../../docs/adr/) | WASM programmable sensing (Tier 3) with RVF container format | Alpha |
 | [ADR-057](../../docs/adr/ADR-057-build-time-csi-guard.md) | Build-time CSI guard (`CONFIG_ESP_WIFI_CSI_ENABLED`) | Accepted |
 | [ADR-060](../../docs/adr/ADR-060-channel-mac-filter.md) | Channel override and MAC address filter | Accepted |
-| [ADR-061](../../docs/adr/ADR-061-qemu-esp32s3-firmware-testing.md) | QEMU ESP32-S3 emulation for firmware testing | Proposed |
+| [ADR-061](../../docs/adr/ADR-061-qemu-esp32-firmware-testing.md) | QEMU ESP32-WROOM emulation for firmware testing | Proposed |
 
 ---
 
